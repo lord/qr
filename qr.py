@@ -4,14 +4,14 @@ class Color(Enum):
   black = 2
   unset = 3
 
-class ModuleType(Enum):
+class Type(Enum):
   functional = 1
   data = 2
 
 class Module:
   def __init__(self):
     self.color = Color.unset
-    self.type = ModuleType.data
+    self.type = Type.data
 
 def display_qr(data):
   for row in data:
@@ -29,7 +29,7 @@ def finder_pattern(data, xstart, ystart):
     for y in range(ystart, ystart+9):
       if x >= 0 and y >= 0 and x < len(data) and y < len(data[0]): # don't draw if off side of code
         from_center = max(abs(x-xstart-4), abs(y-ystart-4))
-        data[y][x].type = ModuleType.functional
+        data[y][x].type = Type.functional
         if from_center == 2 or from_center == 4:
           data[y][x].color = Color.white
         else:
@@ -39,12 +39,12 @@ def alignment_pattern(data, xstart, ystart):
   # check to make sure the space isn't occupied by something already
   for x in range(xstart, xstart+5):
     for y in range(ystart, ystart+5):
-      if data[y][x].type == ModuleType.functional:
+      if data[y][x].type == Type.functional:
         return
 
   for x in range(xstart, xstart+5):
     for y in range(ystart, ystart+5):
-      data[y][x].type = ModuleType.functional
+      data[y][x].type = Type.functional
       if max(abs(x-xstart-2), abs(y-ystart-2)) == 1:
         data[y][x].color = Color.white
       else:
@@ -83,14 +83,18 @@ def base(version):
 
   # add timing patterns
   for i in range(size):
-    if data[i][6].type == ModuleType.data:
-      data[i][6].type = ModuleType.functional
+    if data[i][6].type == Type.data:
+      data[i][6].type = Type.functional
       data[i][6].color = Color.black if i % 2 == 0 else Color.white
-    if data[6][i].type == ModuleType.data:
-      data[6][i].type = ModuleType.functional
+    if data[6][i].type == Type.data:
+      data[6][i].type = Type.functional
       data[6][i].color = Color.black if i % 2 == 0 else Color.white
 
-  # TODO add dark module + reserved areas
+  # add dark module
+  data[size-8][8].color = Color.black
+  data[size-8][8].type = Type.functional
+  # TODO add reserved areas
   return data
 
-display_qr(base(9))
+import sys
+display_qr(base(int(sys.argv[1])))

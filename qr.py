@@ -41,9 +41,24 @@ def finder_pattern(data, xstart, ystart):
 def base(version):
   size = (version-1)*4+21
   data = [[Module() for i in range(size)] for j in range(size)]
+
+  # add finder patterns
   finder_pattern(data, -1, -1) # starts at negative 1, since separator is off side of code
   finder_pattern(data, -1, size-8)
   finder_pattern(data, size-8, -1)
+
+  # TODO add timing patters
+
+  # add timing patterns
+  for i in range(size):
+    if data[i][6].type == ModuleType.data:
+      data[i][6].type = ModuleType.functional
+      data[i][6].color = Color.black if i % 2 == 0 else Color.white
+    if data[6][i].type == ModuleType.data:
+      data[6][i].type = ModuleType.functional
+      data[6][i].color = Color.black if i % 2 == 0 else Color.white
+
+  # TODO add dark module
   return data
 
-display_qr(base(1))
+display_qr(base(5))

@@ -48,6 +48,16 @@ def alignment_pattern(data, xstart, ystart):
       else:
         data[y][x].color = Color.black
 
+def wrap_with_border(data):
+  mod = Module()
+  mod.color = Color.white
+  mod.reserved = True
+  for row in data:
+    row.insert(0, mod)
+    row.append(mod)
+  data.insert(0, [mod] * len(data[0]))
+  data.append([mod] * len(data[0]))
+
 ALIGNMENT_TABLE = {
   1: [],
   2: [6, 18],
@@ -109,4 +119,8 @@ def base(version):
   return data
 
 import sys
-display_qr(base(int(sys.argv[1])))
+
+version = int(sys.argv[1])
+qr = base(version)
+wrap_with_border(qr)
+display_qr(qr)

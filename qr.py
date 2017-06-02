@@ -118,6 +118,29 @@ def base(version):
 
   return qr
 
+def get_penalty_score(qr):
+  penalty = 0
+  size = len(qr)
+
+  # eval condition 1
+  for flipped in [False, True]:
+    for i in range(size):
+      white = 0
+      black = 0
+      for j in range(size):
+        cell = qr[i][j] if flipped else qr[j][i]
+        if cell.color == Color.black: # count unset squares as white
+          white = 0
+          black += 1
+        else:
+          black = 0
+          white += 1
+
+        if white == 5 or black == 5:
+          penalty += 3
+        elif white > 5 or black > 5:
+          penalty += 1
+
 def insert_data(qr, data):
   size = len(qr)
   x = size - 1

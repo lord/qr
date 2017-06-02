@@ -35,6 +35,34 @@ def finder_pattern(data, xstart, ystart):
         else:
           data[y][x].color = Color.black
 
+def alignment_pattern(data, xstart, ystart):
+  # check to make sure the space isn't occupied by something already
+  for x in range(xstart, xstart+5):
+    for y in range(ystart, ystart+5):
+      if data[y][x].type == ModuleType.functional:
+        return
+
+  for x in range(xstart, xstart+5):
+    for y in range(ystart, ystart+5):
+      data[y][x].type = ModuleType.functional
+      if max(abs(x-xstart-2), abs(y-ystart-2)) == 1:
+        data[y][x].color = Color.white
+      else:
+        data[y][x].color = Color.black
+
+ALIGNMENT_TABLE = {
+  1: [],
+  2: [6, 18],
+  3: [6, 22],
+  4: [6, 26],
+  5: [6, 30],
+  6: [6, 34],
+  7: [6, 22, 38],
+  8: [6, 24, 42],
+  9: [6, 26, 46],
+  10: [6, 28, 50]
+}
+
 # 0 = unclaimed free space
 # 1 = black
 # -1 = white
@@ -47,7 +75,11 @@ def base(version):
   finder_pattern(data, -1, size-8)
   finder_pattern(data, size-8, -1)
 
-  # TODO add timing patters
+  # add alignment patters
+  aligns = ALIGNMENT_TABLE[version]
+  for align_a in aligns:
+    for align_b in aligns:
+      alignment_pattern(data, align_a-2, align_b-2)
 
   # add timing patterns
   for i in range(size):
@@ -58,7 +90,7 @@ def base(version):
       data[6][i].type = ModuleType.functional
       data[6][i].color = Color.black if i % 2 == 0 else Color.white
 
-  # TODO add dark module
+  # TODO add dark module + reserved areas
   return data
 
-display_qr(base(5))
+display_qr(base(9))

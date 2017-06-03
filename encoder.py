@@ -1,6 +1,8 @@
+import qr
 import argparse
 import math
 import copy
+import sys
 
 # a dictionary specifying required codeword counts. Ordered by version:correction:codewords
 ERROR_CORRECTION_DICT = {
@@ -52,9 +54,9 @@ def encode_message(msg):
 
 def get_version(msg_len, error_level="L"):
 	version = 1
-	while version <= 10 and MAX_CHAR_COUNTS[error_level][version-1] < msg_len:
+	while version <= 6 and MAX_CHAR_COUNTS[error_level][version-1] < msg_len:
 		version += 1
-	if version > 10:
+	if version > 6:
 		raise RuntimeError("message is too long for largest supported version size!")
 	return version
 
@@ -287,19 +289,15 @@ def get_qr(msg, error_level='M'):
 	version = get_version(len(msg), error_level=error_level)
 	encoded_msg = get_formatted_data(msg, version=version, error_level=error_level)
 	fullyEncodedMessage = error_correction(encoded_msg, version=version, error_level=error_level)
-	return fullyEncodedMessage
+	qr.generate_qr(version, fullyEncodedMessage)
 
 def main():
-	# parser = argparse.ArgumentParser(description='Provide an alphanumeric string and error correction level.')
-	# parser.add_argument('message', metavar='N', type=str, nargs='+',
- #       help='a message to encode')
-	# parser.add_argument('errorLevel', type=str, default='Q',
- #        help='Error correction level: \'L\', \'M\', \'Q\', or \'H\'.  Default: \'Q\'')
-
-	# args = parser.parse_args()
-	# args[0] = message
-	# args[1] = errorLevel
-	print(get_qr('hello world', error_level='Q'))
+	if len(sys.argv) == 0:
+		print("Usage: qr.py msg (error correction strength)")
+	elif len(sys.argv) == 1:
+		get_qr(sys.argv[1], error_level="Q")
+	else:
+		get_qr(sys.argv[1], error_level=sys.argv[2])
 
 if __name__ == "__main__":
 	main()

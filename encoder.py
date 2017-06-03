@@ -53,7 +53,7 @@ def get_version(correction_level, message_length):
 	while version <= 10 and MAX_CHAR_COUNTS[correction_level][version-1] < message_length:
 		version += 1
 	if version > 10:
-		raise ArgumentError("message is too long for largest supported version size!")
+		raise RuntimeError("message is too long for largest supported version size!")
 	return version
 
 class Encoder:

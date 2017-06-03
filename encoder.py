@@ -164,7 +164,7 @@ class Encoder:
 
 
 		groupOneErrorCorrection = []
-		for term range(len(groupOne)):
+		for term in range(len(groupOne)):
 			resultPoly = copy.copy(groupOne[term])
 			for error in range(errorCorrectionPerBlock):
 				resultPoly.append(0)
@@ -173,13 +173,13 @@ class Encoder:
 					generatorMultPolyOne[j] = int(resultPoly[0])*generatorPolyOne[j]
 				for k in range(0, len(messagePolynomial)):
 					resultPoly[k] = int(generatorMultPolyOne[k])^int(resultPoly[k])
-			for term in resultPoly:
-				term = bin(term)
+			for coefficient in range(len(resultPoly)):
+				resultPoly[coefficient] = bin(coefficient)[2:]
 			groupOneErrorCorrection.append(resultPoly)
 
 
 		groupTwoErrorCorrection = []
-		for term range(len(groupTwo)):
+		for term in range(len(groupTwo)):
 			resultPoly = copy.copy(groupTwo[term])
 			for error in range(errorCorrectionPerBlock):
 				resultPoly.append(0)
@@ -188,8 +188,8 @@ class Encoder:
 					generatorMultPolyTwo[j] = resultPoly[0]*generatorPolyTwo[j]
 				for k in range(len(messagePolynomial)):
 					resultPoly[k] = generatorMultPolyTwo[k]^resultPoly[k]
-			for term in resultPoly:
-				term = bin(term)
+			for coefficient in range(len(resultPoly)):
+				resultPoly[coefficient] = bin(coefficient)[2:]
 			groupTwoErrorCorrection.append(resultPoly)
 
 
@@ -207,6 +207,7 @@ class Encoder:
 		for j in range(errorCorrectionPerBlock):
 			for i in range(numGroupOneBlocks):
 				interleavedEC = interleavedEC+str(groupOneErrorCorrection[i][j])
+				print(interleavedEC)
 				if i<numGroupTwoBlocks:
 					interleavedEC = interleavedEC+str(groupTwoErrorCorrection[i][j])
 

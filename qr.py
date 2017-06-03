@@ -1,5 +1,6 @@
 from enum import Enum
 import math
+from copy import deepcopy
 
 ALIGNMENT_TABLE = {
   1: [],
@@ -13,6 +14,18 @@ ALIGNMENT_TABLE = {
   9: [6, 26, 46],
   10: [6, 28, 50]
 }
+
+# TODO test all masks with QR code reader by forcing a mask
+MASKS = [
+  lambda col, row: (row + col) % 2 == 0,
+  lambda col, row: row % 2 == 0,
+  lambda col, row: col % 3 == 0,
+  lambda col, row: (row + col) % 3 == 0,
+  lambda col, row: (row//2 + col//3) % 2 == 0,
+  lambda col, row: ((row*col) % 2) + ((row*col) % 3) == 0,
+  lambda col, row: ((((row*col) % 2) + ((row*col) % 3))) % 2 == 0, # TODO check order of operations of this
+  lambda col, row: ((((row+col) % 2) + ((row*col) % 3))) % 2 == 0 # TODO check order of operations of this
+]
 
 CONDITION_3_PATTERN = [False, False, False, False, True, False, True, True, True, False, True]
 
@@ -127,6 +140,18 @@ def base(version):
 
   return qr
 
+def apply_mask(qr, mask):
+  qr = deepcopy(qr)
+  size = len(qr)
+  for x in range(size):
+    for y in range(size):
+      if mask(x, y) and not qr[y][x].reserved:
+        if qr[y][x].color == Color.black:
+          qr[y][x].color = Color.white
+        else:
+          qr[y][x].color = Color.black
+  return qr
+
 def get_penalty_score(qr):
   penalty = 0
   size = len(qr)
@@ -232,11 +257,25 @@ def insert_data(qr, data):
     if x == 6:
       x = 5
 
-version = 5
+def generate_qr(version, input_data_str):
+  # put in data
+  input_data = list(map(bool, map(int, input_data_str)))
+  qr = base(version)
+  insert_data(qr, input_data)
+
+  # select best mask
+  best_score = -1
+  best_mask = 0
+  for i in range(len(MASKS)):
+    score = get_penalty_score(apply_mask(qr, MASKS[i]))
+    if best_score == -1 or score < best_score:
+      best_score = score
+      best_mask = i
+  qr = apply_mask(qr, MASKS[best_mask])
+
+  # wrap with border and display
+  wrap_with_border(qr)
+  display_qr(qr)
+
 input_data_str = "01000011111101101011011001000110010101011111011011100110111101110100011001000010111101110111011010000110000001110111011101010110010101110111011000110010110000100010011010000110000001110000011001010101111100100111011010010111110000100000011110000110001100100111011100100110010101110001000000110010010101100010011011101100000001100001011001010010000100010001001011000110000001101110110000000110110001111000011000010001011001111001001010010111111011000010011000000110001100100001000100000111111011001101010101010111100101001110101111000111110011000111010010011111000010110110000010110001000001010010110100111100110101001010110101110011110010100100110000011000111101111011011010000101100100111111000101111100010010110011101111011111100111011111001000100001111001011100100011101110011010101111100010000110010011000010100010011010000110111100001111111111011101011000000111100110101011001001101011010001101111010101001001101111000100010000101000000010010101101010001101101100100000111010000110100011111100000010000001101111011110001100000010110010001001111000010110001101111011000000000"
-input_data = list(map(bool, map(int, input_data_str)))
-qr = base(version)
-insert_data(qr, input_data)
-print(get_penalty_score(qr))
-wrap_with_border(qr)
-display_qr(qr)
+generate_qr(5, input_data_str)

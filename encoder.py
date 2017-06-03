@@ -2,7 +2,45 @@ import argparse
 import math
 import copy
 
-class Encoder: 
+# a dictionary specifying required codeword counts. Ordered by version:correction:codewords
+ERROR_CORRECTION_DICT = {
+	1:{'L':19,'M':16,'Q':13,'H':9},
+	2:{'L':34, 'M':28, 'Q':22, 'H':16},
+	3:{'L':55, 'M':44, 'Q':34, 'H':26},
+	4:{'L':80, 'M':64, 'Q':48, 'H':36},
+	5:{'L':108, 'M':86, 'Q':62, 'H':46},
+	6:{'L':136, 'M':108, 'Q':76, 'H':60},
+	7:{'L':156, 'M':124, 'Q':88, 'H':66},
+	8:{'L':194, 'M':154, 'Q':110, 'H':86},
+	9:{'L':232, 'M':182, 'Q':132, 'H':100},
+	10:{'L':274, 'M':216, 'Q':154, 'H':122}
+}
+
+def encodeMessage(msg):
+	alphanumericValueTable = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D',
+		'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
+		'V', 'W', 'X', 'Y', 'Z', ' ', '$', '%', '*', '+', '-', '.', '/', ':']
+	messageEncoding = ""
+	for i in range(len(msg)//2):
+		firstValue = 45 * alphanumericValueTable.index(msg[2*i])
+		secondValue = alphanumericValueTable.index(msg[2*i+1])
+		value = firstValue+secondValue
+		binaryValue = bin(value)[2:].zfill(8)
+		paddingBits = 11 - len(binaryValue)
+		for bit in range(paddingBits):
+			binaryValue = str(0)+str(binaryValue)
+		messageEncoding = messageEncoding + str(binaryValue)
+	if (len(msg) % 2 != 0):
+		lastValue = alphanumericValueTable.index(msg[-1])
+		binaryValue = bin(lastValue)[2:]
+		paddingBits = 6 - len(binaryValue)
+		for bit in range(paddingBits):
+			binaryValue = str(0)+str(binaryValue)
+		messageEncoding = messageEncoding + str(binaryValue)
+	return messageEncoding
+
+
+class Encoder:
 	def __init__(self, messageString, errorCorrection):
 		self.originalData = messageString
 		self.charCount = 0
@@ -28,41 +66,16 @@ class Encoder:
 		charCountValue = charCountValue + messageLengthBinary
 		self.charCount = charCountValue
 
-	def encodeData(self):
-		#a dictionary specifying version sizes. Ordered by version:correction:codewords
-		errorCorrectionDictionary = {1:{'L':19,'M':16,'Q':13,'H':9}, 
-			2:{'L':34, 'M':28, 'Q':22, 'H':16},
-			3:{'L':55, 'M':44, 'Q':34, 'H':26},
-			4:{'L':80, 'M':64, 'Q':48, 'H':36},
-			5:{'L':108, 'M':86, 'Q':62, 'H':46},
-			6:{'L':136, 'M':108, 'Q':76, 'H':60},
-			7:{'L':156, 'M':124, 'Q':88, 'H':66},
-			8:{'L':194, 'M':154, 'Q':110, 'H':86},
-			9:{'L':232, 'M':182, 'Q':132, 'H':100},
-			10:{'L':274, 'M':216, 'Q':154, 'H':122}}
-		requiredWords = errorCorrectionDictionary[self.version][self.correctionLevel]
+	def formatReturnString(self):
+		requiredWords = ERROR_CORRECTION_DICT[self.version][self.correctionLevel]
 		requiredBits = 8*requiredWords
-		encodedMessage = self.encodeMessage()
+
+		encodedMessage = encodeMessage(self.originalData)
 		terminalBits = min(4, requiredBits-len(encodedMessage))
 		for bit in range(terminalBits):
 			encodedMessage = str(encodedMessage)+str(0)
 		self.dataEncoding = encodedMessage
 
-	def formatReturnString(self):
-		errorCorrectionDictionary = {1:{'L':19,'M':16,'Q':13,'H':9}, 
-		2:{'L':34, 'M':28, 'Q':22, 'H':16},
-		3:{'L':55, 'M':44, 'Q':34, 'H':26},
-		4:{'L':80, 'M':64, 'Q':48, 'H':36},
-		5:{'L':108, 'M':86, 'Q':62, 'H':46},
-		6:{'L':136, 'M':108, 'Q':76, 'H':60},
-		7:{'L':156, 'M':124, 'Q':88, 'H':66},
-		8:{'L':194, 'M':154, 'Q':110, 'H':86},
-		9:{'L':232, 'M':182, 'Q':132, 'H':100},
-		10:{'L':274, 'M':216, 'Q':154, 'H':122}}
-		requiredWords = errorCorrectionDictionary[self.version][self.correctionLevel]
-		requiredBits = 8*requiredWords
-
-		self.encodeData()
 		self.formatCharCount()
 
 		temporaryString = self.modeIndicator+str(self.charCount)+str(self.dataEncoding)
@@ -98,29 +111,6 @@ class Encoder:
 		self.version = version
 		return version
 
-	def encodeMessage(self):
-		alphanumericValueTable = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D',
-			'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
-			'V', 'W', 'X', 'Y', 'Z', ' ', '$', '%', '*', '+', '-', '.', '/', ':']
-		for i in range  (len(self.originalData)//2):
-			firstValue = 45 * alphanumericValueTable.index(self.originalData[2*i])
-			secondValue = alphanumericValueTable.index(self.originalData[2*i+1])
-			value = firstValue+secondValue
-			binaryValue = bin(value)[2:].zfill(8)
-			paddingBits = 11 - len(binaryValue)
-			for bit in range(paddingBits):
-				binaryValue = str(0)+str(binaryValue)
-			messageEncoding = ""
-			messageEncoding = messageEncoding + str(binaryValue)
-		if (len(self.originalData) % 2 != 0):
-			lastValue = alphanumericValueTable.index(self.originalData[-1])
-			binaryValue = bin(lastValue)[2:].zfill(8)
-			paddingBits = 6 - len(binaryValue)
-			for bit in range(paddingBits):
-				binaryValue = str(0)+str(binaryValue)
-			messageEncoding = messageEncoding + str(binaryValue)
-		return messageEncoding
-
 	def errorCorrection(self, messageString):
 		ECTable = {'L':{1:7, 2:10, 3:15, 4:20, 5:26, 6:18, 7:20, 8:26, 9:30, 10:18},
 		'M':{1:10, 2:16, 3:26, 4:18, 5:24, 6:16, 7:18, 8:22, 9:22, 10:26},
@@ -150,7 +140,7 @@ class Encoder:
 		for block in range(numGroupOneBlocks):
 			dataCodewordsBlock = []
 			for codeword in range(numDataCodewordsGroupOne):
-				dataCodewordsBlock.append(messagePolynomial[block*numDataCodewordsGroupOne + codeword]) 
+				dataCodewordsBlock.append(messagePolynomial[block*numDataCodewordsGroupOne + codeword])
 			groupOne.append(dataCodewordsBlock)
 		for block in range(numGroupTwoBlocks):
 			dataCodewordsBlock = []
@@ -294,7 +284,8 @@ def main():
 	errorLevel = 'M'
 	message = message.upper()
 	stringEncoder = Encoder(message, errorLevel)
-	encodedMessage = stringEncoder.formatReturnString()
+	print(encodeMessage("HELLO WORLD"))
+	return
 	fullyEncodedMessage = stringEncoder.errorCorrection(encodedMessage)
 
 	print(fullyEncodedMessage)

@@ -15,7 +15,6 @@ ALIGNMENT_TABLE = {
   10: [6, 28, 50]
 }
 
-# TODO test all masks with QR code reader by forcing a mask
 MASKS = [
   lambda col, row: (row + col) % 2 == 0,
   lambda col, row: row % 2 == 0,
@@ -23,8 +22,8 @@ MASKS = [
   lambda col, row: (row + col) % 3 == 0,
   lambda col, row: (row//2 + col//3) % 2 == 0,
   lambda col, row: ((row*col) % 2) + ((row*col) % 3) == 0,
-  lambda col, row: ((((row*col) % 2) + ((row*col) % 3))) % 2 == 0, # TODO check order of operations of this
-  lambda col, row: ((((row+col) % 2) + ((row*col) % 3))) % 2 == 0 # TODO check order of operations of this
+  lambda col, row: ((((row*col) % 2) + ((row*col) % 3))) % 2 == 0,
+  lambda col, row: ((((row+col) % 2) + ((row*col) % 3))) % 2 == 0
 ]
 
 CORRECTION_INT_TABLE = {

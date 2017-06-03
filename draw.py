@@ -132,14 +132,13 @@ def base(version):
   qr[size-8][8].reserved = True
 
   # add reserved areas
-  if version < 7:
-    qr[8][8].reserved = True
-    for i in range(0, 8):
-      qr[i][8].reserved = True
-      qr[8][i].reserved = True
-      qr[8][size-i-1].reserved = True
-      qr[size-i-1][8].reserved = True
-  else:
+  qr[8][8].reserved = True
+  for i in range(0, 8):
+    qr[i][8].reserved = True
+    qr[8][i].reserved = True
+    qr[8][size-i-1].reserved = True
+    qr[size-i-1][8].reserved = True
+  if version >= 7:
     for i in range(0, 3):
       for j in range(0, 6):
         qr[size-9-i][j].reserved = True
@@ -286,22 +285,35 @@ def insert_format_string(qr, format_str):
     color = Color.black if format_str[i] else Color.white
     if i <= 7:
       qr[8][size-i-1].color = color
-      # qr[8][size-i-1].mark = str(i)[-1]
       if i >= 6: # skip over timing pattern
         qr[i+1][8].color = color
-        # qr[i+1][8].mark = str(i)[-1]
       else:
         qr[i][8].color = color
-        # qr[i][8].mark = str(i)[-1]
     else:
       qr[i+size-7-8][8].color = color
-      # qr[i+size-7-8][8].mark = str(i)[-1]
       if i == 8:
         qr[8][7].color = color
-        # qr[8][7].mark = str(i)[-1]
       else:
         qr[8][5+9-i].color = color
-        # qr[8][5+9-i].mark = str(i)[-1]
+
+def get_version_string(version):
+  res = {
+    7:  "000111110010010100",
+    8:  "001000010110111100",
+    9:  "001001101010011001",
+    10: "001010010011010011"
+  }[version]
+  return list(map(bool, map(int, res)))
+
+def insert_version_string(qr, version_str):
+  size = len(qr)
+  for i in range(18):
+    color = Color.black if version_str[i] else Color.white
+    j = i % 3
+    k = i // 3
+    qr[5-k][size-9-j].color = color
+    qr[size-9-j][5-k].color = color
+    qr[size-9-j][5-k].mark = str(i % 10)
 
 def generate_qr(version, input_data_str):
   # put in data
@@ -322,6 +334,10 @@ def generate_qr(version, input_data_str):
   # calculate and add format string
   format_str = get_format_string("Q", best_mask) # TODO set correct correction level
   insert_format_string(qr, format_str)
+
+  if version >= 7:
+    version_str = get_version_string(version)
+    insert_version_string(qr, version_str)
 
   # wrap with border and display
   wrap_with_border(qr)

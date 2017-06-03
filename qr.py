@@ -56,7 +56,7 @@ def get_version(msg_len, error_level="L"):
 	version = 1
 	while version <= 6 and MAX_CHAR_COUNTS[error_level][version-1] < msg_len:
 		version += 1
-	if version > 6:
+	if version > 4:
 		raise RuntimeError("message is too long for largest supported version size!")
 	return version
 
@@ -121,10 +121,12 @@ def get_blocking_counts(error_level="L", version=1):
 		return [(len(g1), g1[0]), (len(g2), g2[0])]
 
 # table of error correcting codewords per block for various versions and error levels
-EC_TABLE = {'L':{1:7, 2:10, 3:15, 4:20, 5:26, 6:18, 7:20, 8:26, 9:30, 10:18},
-'M':{1:10, 2:16, 3:26, 4:18, 5:24, 6:16, 7:18, 8:22, 9:22, 10:26},
-'Q':{1:13, 2:22, 3:18, 4:26, 5:18, 6:24, 7:18, 8:22, 9:20, 10:24},
-'H':{1:17, 2:28, 3:22, 4:16, 5:22, 6:28, 7:26, 8:26, 9:24, 10:28}}
+EC_TABLE = {
+	'L':{1:7, 2:10, 3:15, 4:20, 5:26, 6:18, 7:20, 8:26, 9:30, 10:18},
+	'M':{1:10, 2:16, 3:26, 4:18, 5:24, 6:16, 7:18, 8:22, 9:22, 10:26},
+	'Q':{1:13, 2:22, 3:18, 4:26, 5:18, 6:24, 7:18, 8:22, 9:20, 10:24},
+	'H':{1:17, 2:28, 3:22, 4:16, 5:22, 6:28, 7:26, 8:26, 9:24, 10:28}
+}
 
 def error_correction(encoded_msg, error_level="L", version=1):
 	error_cw_per_block = EC_TABLE[error_level][version]

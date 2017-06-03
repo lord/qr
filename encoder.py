@@ -190,7 +190,6 @@ class Encoder:
 			groupTwoErrorCorrection.append(resultPoly)
 
 
-		print(groupOneErrorCorrection)
 		sizeLimit = max(numDataCodewordsGroupTwo, numDataCodewordsGroupOne)
 		interleavedMessage = ""
 		interleavedEC = ""
@@ -202,8 +201,8 @@ class Encoder:
 				if (j < numDataCodewordsGroupTwo and i < numGroupTwoBlocks):
 					interleavedMessage = interleavedMessage+str(groupTwo[i][j])
 
-		for j in range(errorCorrectionPerBlock - 1):
-			for i in range(numGroupOneBlocks - 1):
+		for j in range(errorCorrectionPerBlock):
+			for i in range(numGroupOneBlocks):
 				interleavedEC = interleavedEC+str(groupOneErrorCorrection[i][j])
 				if i<numGroupTwoBlocks:
 					interleavedEC = interleavedEC+str(groupTwoErrorCorrection[i][j])

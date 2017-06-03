@@ -27,6 +27,13 @@ MASKS = [
   lambda col, row: ((((row+col) % 2) + ((row*col) % 3))) % 2 == 0 # TODO check order of operations of this
 ]
 
+CORRECTION_INT_TABLE = {
+  "L": 0b01,
+  "M": 0b00,
+  "Q": 0b11,
+  "H": 0b10
+}
+
 CONDITION_3_PATTERN = [False, False, False, False, True, False, True, True, True, False, True]
 
 class Color(Enum):
@@ -43,18 +50,18 @@ class Module:
 def display_qr(qr):
   for row in qr:
     for cell in row:
-      msg = " "
+      msg = "  "
       if cell.mark:
-        msg = ""
-        print("x", end="")
+        msg = " "
+        print(cell.mark, end="")
       if cell.color == Color.black:
-        print("\033[40m", msg, "\033[0m", end="")
+        print("\033[40m" + msg + "\033[0m", end="")
       elif cell.color == Color.white:
-        print("\033[47m", msg, "\033[0m", end="")
+        print("\033[47m" + msg + "\033[0m", end="")
       elif cell.reserved == True:
-        print("\033[42m", msg, "\033[0m", end="") # unset but reserved space
+        print("\033[42m" + msg + "\033[0m", end="") # unset but reserved space
       else:
-        print("\033[41m", msg, "\033[0m", end="") # completely unset space
+        print("\033[41m" + msg + "\033[0m", end="") # completely unset space
     print()
 
 def finder_pattern(qr, xstart, ystart):
@@ -257,6 +264,45 @@ def insert_data(qr, data):
     if x == 6:
       x = 5
 
+def get_format_string(correction_level, mask_pattern):
+  gen_poly = 0b10100110111
+  mask_string = 0b101010000010010
+  msg_bits = (CORRECTION_INT_TABLE[correction_level] << 3) | mask_pattern
+  error_bits = msg_bits << 10
+  while len(bin(error_bits)) > 12:
+    len_diff = len(bin(error_bits)) - 13
+    error_bits = (gen_poly << len_diff) ^ error_bits
+  final = bin(((msg_bits << 10) | error_bits) ^ mask_string)
+  final = final[2:] # get rid of '0b' in string
+  final_list = list(map(bool, map(int, final))) # convert to array of bools
+  while len(final_list) < 15: # left pad out to 15 long with zeros
+    final_list.insert(0, False)
+  return final_list
+
+def insert_format_string(qr, format_str):
+  size = len(qr)
+  format_str = list(reversed(format_str))
+  for i in range(15):
+    color = Color.black if format_str[i] else Color.white
+    if i <= 7:
+      qr[8][size-i-1].color = color
+      # qr[8][size-i-1].mark = str(i)[-1]
+      if i >= 6: # skip over timing pattern
+        qr[i+1][8].color = color
+        # qr[i+1][8].mark = str(i)[-1]
+      else:
+        qr[i][8].color = color
+        # qr[i][8].mark = str(i)[-1]
+    else:
+      qr[i+size-7-8][8].color = color
+      # qr[i+size-7-8][8].mark = str(i)[-1]
+      if i == 8:
+        qr[8][7].color = color
+        # qr[8][7].mark = str(i)[-1]
+      else:
+        qr[8][5+9-i].color = color
+        # qr[8][5+9-i].mark = str(i)[-1]
+
 def generate_qr(version, input_data_str):
   # put in data
   input_data = list(map(bool, map(int, input_data_str)))
@@ -273,7 +319,12 @@ def generate_qr(version, input_data_str):
       best_mask = i
   qr = apply_mask(qr, MASKS[best_mask])
 
+  # calculate and add format string
+  format_str = get_format_string("Q", best_mask) # TODO set correct correction level
+  insert_format_string(qr, format_str)
+
   # wrap with border and display
+  wrap_with_border(qr)
   wrap_with_border(qr)
   display_qr(qr)
 

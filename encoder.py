@@ -56,6 +56,19 @@ def get_version(correction_level, message_length):
 		raise RuntimeError("message is too long for largest supported version size!")
 	return version
 
+def format_char_count(correction_level, version, msg):
+	if version == 10:
+		indicatorSize = 11
+	else:
+		indicatorSize = 9
+	messageLengthBinary = bin(len(msg))[2:].zfill(8)
+	paddingBits = indicatorSize - len(messageLengthBinary)
+	charCountValue=""
+	for bit in range(paddingBits):
+		charCountValue = str(0)+str(charCountValue)
+	charCountValue = charCountValue + messageLengthBinary
+	return charCountValue
+
 class Encoder:
 	def __init__(self, messageString, errorCorrection):
 		self.originalData = messageString
@@ -65,21 +78,6 @@ class Encoder:
 		self.returnString = ''
 		self.correctionLevel = errorCorrection
 		self.version = 1
-
-	def formatCharCount(self):
-		messageLength = len(self.originalData)
-		self.version = get_version(self.correctionLevel, messageLength)
-		if self.version == 10:
-			indicatorSize = 11
-		else:
-			indicatorSize = 9
-		messageLengthBinary = bin(messageLength)[2:].zfill(8)
-		paddingBits = indicatorSize - len(messageLengthBinary)
-		charCountValue=""
-		for bit in range(paddingBits):
-			charCountValue = str(0)+str(charCountValue)
-		charCountValue = charCountValue + messageLengthBinary
-		self.charCount = charCountValue
 
 	def formatReturnString(self):
 		requiredWords = ERROR_CORRECTION_DICT[self.version][self.correctionLevel]
@@ -91,7 +89,8 @@ class Encoder:
 			encodedMessage = str(encodedMessage)+str(0)
 		self.dataEncoding = encodedMessage
 
-		self.formatCharCount()
+		self.version = get_version(self.correctionLevel, len(self.originalData))
+		self.charCount = format_char_count(self.correctionLevel, self.version, self.originalData)
 
 		temporaryString = self.modeIndicator+str(self.charCount)+str(self.dataEncoding)
 		while not (len(temporaryString) % 8 == 0):

@@ -161,9 +161,8 @@ class Encoder:
 
 
 		groupOneErrorCorrection = []
-		i = 0
-		while(i < len(groupOne)):
-			resultPoly = copy.copy(groupOne[i])
+		for term range(len(groupOne)):
+			resultPoly = copy.copy(groupOne[term])
 			for error in range(errorCorrectionPerBlock):
 				resultPoly.append(0)
 			for i in range(numDataCodewordsGroupOne):
@@ -177,9 +176,8 @@ class Encoder:
 
 
 		groupTwoErrorCorrection = []
-		i = 0
-		while(i < len(groupTwo)):
-			resultPoly = copy.copy(groupTwo[i])
+		for term range(len(groupTwo)):
+			resultPoly = copy.copy(groupTwo[term])
 			for error in range(errorCorrectionPerBlock):
 				resultPoly.append(0)
 			for i in range(numDataCodewordsGroupTwo):

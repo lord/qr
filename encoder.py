@@ -39,7 +39,6 @@ def encode_message(msg):
 		messageEncoding = messageEncoding + str(binaryValue)
 	return messageEncoding
 
-
 class Encoder:
 	def __init__(self, messageString, errorCorrection):
 		self.originalData = messageString
@@ -49,7 +48,6 @@ class Encoder:
 		self.returnString = ''
 		self.correctionLevel = errorCorrection
 		self.version = 1
-
 
 	def formatCharCount(self):
 		messageLength = len(self.originalData)
@@ -87,7 +85,7 @@ class Encoder:
 
 			temporaryString
 			for i in range(padBytesNeeded):
-				if (i % 2) == 1:
+				if (i % 2) == 0:
 					temporaryString = temporaryString + '11101100'
 				else:
 					temporaryString = temporaryString + '00010001'

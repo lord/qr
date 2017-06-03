@@ -16,7 +16,7 @@ ERROR_CORRECTION_DICT = {
 	10:{'L':274, 'M':216, 'Q':154, 'H':122}
 }
 
-def encodeMessage(msg):
+def encode_message(msg):
 	alphanumericValueTable = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D',
 		'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
 		'V', 'W', 'X', 'Y', 'Z', ' ', '$', '%', '*', '+', '-', '.', '/', ':']
@@ -70,7 +70,7 @@ class Encoder:
 		requiredWords = ERROR_CORRECTION_DICT[self.version][self.correctionLevel]
 		requiredBits = 8*requiredWords
 
-		encodedMessage = encodeMessage(self.originalData)
+		encodedMessage = encode_message(self.originalData)
 		terminalBits = min(4, requiredBits-len(encodedMessage))
 		for bit in range(terminalBits):
 			encodedMessage = str(encodedMessage)+str(0)
@@ -284,7 +284,7 @@ def main():
 	errorLevel = 'M'
 	message = message.upper()
 	stringEncoder = Encoder(message, errorLevel)
-	print(encodeMessage("HELLO WORLD"))
+	print(encode_message("HELLO WORLD"))
 	return
 	fullyEncodedMessage = stringEncoder.errorCorrection(encodedMessage)
 

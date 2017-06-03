@@ -252,6 +252,12 @@ def find_generator_poly(numberECWords):
 
 	return generatorPolynomials[numberECWords]
 
+def get_qr(msg, error_level='L'):
+	version = get_version(len(msg), error_level=error_level)
+	encoded_msg = get_formatted_data(msg, version=version, error_level=error_level)
+	fullyEncodedMessage = error_correction(encoded_msg, version=version, error_level=error_level)
+	return fullyEncodedMessage
+
 def main():
 	# parser = argparse.ArgumentParser(description='Provide an alphanumeric string and error correction level.')
 	# parser.add_argument('message', metavar='N', type=str, nargs='+',
@@ -262,13 +268,7 @@ def main():
 	# args = parser.parse_args()
 	# args[0] = message
 	# args[1] = errorLevel
-	msg = 'hello world'
-	error_level = 'M'
-	version = get_version(len(msg), error_level=error_level)
-	encoded_msg = get_formatted_data(msg, version=version, error_level=error_level)
-	fullyEncodedMessage = error_correction(encoded_msg, version=version, error_level=error_level)
-
-	print(fullyEncodedMessage)
+	print(get_qr('hello world'))
 
 if __name__ == "__main__":
 	main()

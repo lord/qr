@@ -176,13 +176,14 @@ def error_correction(encoded_msg, error_level="L", version=1):
 				# slice away the now-zero leading term
 				result_poly = result_poly[1:]
 
-
 			err_codewords.append(result_poly)
 		group_err.append(err_codewords)
-		result_poly = list(map(lambda i: bin(i)[2:].zfill(8), result_poly))
 
-	print("data: ", group_data)
-	print("erro: ", group_err)
+	for a in [group_data, group_err]:
+		for b in a:
+			for c in b:
+				for i in range(len(c)):
+					c[i] = bin(c[i])[2:].zfill(8)
 
 	max_data_cw = max(map(lambda i: i[1], group_blockings))
 	max_group = group_blockings[0][0]
@@ -191,13 +192,13 @@ def error_correction(encoded_msg, error_level="L", version=1):
 	for j in range(max_data_cw):
 		for i in range(max_group):
 			for group in group_data:
-				if (i < len(group)):
+				if i < len(group) and j < len(group[i]):
 					interleaved_msg += str(group[i][j])
 
 	for j in range(error_cw_per_block):
 		for i in range(max_group):
 			for group in group_err:
-				if (i < len(group)):
+				if i < len(group) and j < len(group[i]):
 					interleaved_err += str(group[i][j])
 
 	finalMessage = interleaved_msg+interleaved_err
@@ -298,7 +299,7 @@ def main():
 	# args = parser.parse_args()
 	# args[0] = message
 	# args[1] = errorLevel
-	print(get_qr('hello world'))
+	print(get_qr('hello world', error_level='Q'))
 
 if __name__ == "__main__":
 	main()

@@ -104,99 +104,79 @@ def get_formatted_data(msg, version=1, error_level="L"):
 		return_string = return_string+temporaryString[i]
 	return return_string
 
+BLOCKING_DICT = {
+	'L':{1:([19],None), 2:([34],None), 3:([55],None), 4:([80],None), 5:([108],None), 6:([68, 68],None), 7:([78, 78],None), 8:([97, 97],None), 9:([116, 116],None), 10:([68, 68],[69, 69])},
+	'M':{1:([16],None), 2:([28],None), 3:([44],None), 4:([32, 32],None), 5:([43, 43],None), 6:([27, 27, 27, 27],None), 7:([31, 31, 31, 31],None), 8:([38, 38],[39, 39]), 9:([36, 36, 36],[37, 37]), 10:([43, 43, 43, 43],[44])},
+	'Q':{1:([13],None), 2:([22],None), 3:([17, 17],None), 4:([24, 24],None), 5:([15, 15],[16, 16]), 6:([19, 19, 19, 19],None), 7:([14, 14],[15, 15, 15, 15]), 8:([18, 18, 18, 18],[19, 19]), 9:([16, 16, 16, 16],[17, 17, 17, 17]), 10:([19, 19, 19, 19, 19, 19],[20, 20])},
+	'H':{1:([9],None), 2:([16],None), 3:([13, 13],None), 4:([9, 9, 9, 9],None), 5:([11, 11],[12, 12]), 6:([15, 15, 15, 15],None), 7:([13, 13, 13, 13],[14]), 8:([14, 14, 14, 14],[15, 15]), 9:([12, 12, 12, 12],[13, 13, 13, 13]), 10:([15, 15, 15, 15, 15, 15],[16, 16])}
+}
+# returns list of groups [(num_blocks_in_group, num_codewords_per_block, ec)]
+def get_blocking_counts(error_level="L", version=1):
+	(g1, g2) = BLOCKING_DICT[error_level][version]
+	if g2 == None:
+		return [(len(g1), g1[0])]
+	else:
+		return [(len(g1), g1[0]), (len(g2), g2[0])]
+
+# table of error correcting codewords per block for various versions and error levels
+EC_TABLE = {'L':{1:7, 2:10, 3:15, 4:20, 5:26, 6:18, 7:20, 8:26, 9:30, 10:18},
+'M':{1:10, 2:16, 3:26, 4:18, 5:24, 6:16, 7:18, 8:22, 9:22, 10:26},
+'Q':{1:13, 2:22, 3:18, 4:26, 5:18, 6:24, 7:18, 8:22, 9:20, 10:24},
+'H':{1:17, 2:28, 3:22, 4:16, 5:22, 6:28, 7:26, 8:26, 9:24, 10:28}}
 
 def error_correction(encoded_msg, error_level="L", version=1):
-	ECTable = {'L':{1:7, 2:10, 3:15, 4:20, 5:26, 6:18, 7:20, 8:26, 9:30, 10:18},
-	'M':{1:10, 2:16, 3:26, 4:18, 5:24, 6:16, 7:18, 8:22, 9:22, 10:26},
-	'Q':{1:13, 2:22, 3:18, 4:26, 5:18, 6:24, 7:18, 8:22, 9:20, 10:24},
-	'H':{1:17, 2:28, 3:22, 4:16, 5:22, 6:28, 7:26, 8:26, 9:24, 10:28}}
-	errorCorrectionPerBlock = ECTable[error_level][version]
-	blockingDictionary = {'L':{1:[[19],[]], 2:[[34],[]], 3:[[55],[]], 4:[[80],[]], 5:[[108],[]], 6:[[68, 68],[]], 7:[[78, 78],[]], 8:[[97, 97],[]], 9:[[116, 116],[]], 10:[[68, 68],[69, 69]]},
-	'M':{1:[[16],[]], 2:[[28],[]], 3:[[44],[]], 4:[[32, 32],[]], 5:[[43, 43],[]], 6:[[27, 27, 27, 27],[]], 7:[[31, 31, 31, 31],[]], 8:[[38, 38],[39, 39]], 9:[[36, 36, 36],[37, 37]], 10:[[43, 43, 43, 43],[44]]},
-	'Q':{1:[[13],[]], 2:[[22],[]], 3:[[17, 17],[]], 4:[[24, 24],[]], 5:[[15, 15],[16, 16]], 6:[[19, 19, 19, 19],[]], 7:[[14, 14],[15, 15, 15, 15]], 8:[[18, 18, 18, 18],[19, 19]], 9:[[16, 16, 16, 16],[17, 17, 17, 17]], 10:[[19, 19, 19, 19, 19, 19],[20, 20]]},
-	'H':{1:[[9],[]], 2:[[16],[]], 3:[[13, 13],[]], 4:[[9, 9, 9, 9],[]], 5:[[11, 11],[12, 12]], 6:[[15, 15, 15, 15],[]], 7:[[13, 13, 13, 13],[14]], 8:[[14, 14, 14, 14],[15, 15]], 9:[[12, 12, 12, 12],[13, 13, 13, 13]], 10:[[15, 15, 15, 15, 15, 15],[16, 16]]}}
-	numGroupOneBlocks = len(blockingDictionary[error_level][version][0])
-	numDataCodewordsGroupOne = blockingDictionary[error_level][version][0][0]
-	numGroupTwoBlocks = len(blockingDictionary[error_level][version][1])
-	if numGroupTwoBlocks > 0:
-		numDataCodewordsGroupTwo = blockingDictionary[error_level][version][1][0]
-	else:
-		numDataCodewordsGroupTwo = 0
-	messagePolynomial = encoded_msg.split(" ")
-	if (messagePolynomial[0] == ""):
-		messagePolynomial = messagePolynomial[1:]
+	error_cw_per_block = EC_TABLE[error_level][version]
+	gen_poly_template = find_generator_poly(error_cw_per_block)
+	group_blockings = get_blocking_counts(error_level=error_level, version=version)
+	msg_poly = list(filter(len, encoded_msg.split(" "))) # filter out empty strings
 
-	for coefficient in messagePolynomial:
+	# convert each binary string into a number, which become coefficients of the gen polynomial
+	msg_poly = list(map(lambda i: int(i,2), msg_poly))
 
-		coefficient = int(coefficient, 2)
-	groupOne = []
-	groupTwo = []
-	for block in range(numGroupOneBlocks):
-		dataCodewordsBlock = []
-		for codeword in range(numDataCodewordsGroupOne):
-			dataCodewordsBlock.append(messagePolynomial[block*numDataCodewordsGroupOne + codeword])
-		groupOne.append(dataCodewordsBlock)
-	for block in range(numGroupTwoBlocks):
-		dataCodewordsBlock = []
-		for codeword in range(0, numDataCodewordsGroupTwo):
-			dataCodewordsBlock.append(messagePolynomial[block*numDataCodewordsGroupTwo + codeword])
-		groupTwo.append(dataCodewordsBlock)
+	for (num_blocks, codewords_per_block) in group_blockings:
+		# pull numbers from global message polynomial into groupings
+		blocks = []
+		for block_num in range(num_blocks):
+			block_data = []
+			for codeword_num in range(codewords_per_block):
+				block_data.append(msg_poly[block_num*codewords_per_block + codeword_num])
+			blocks.append(block_data)
 
-	generatorPolynomial = find_generator_poly(errorCorrectionPerBlock)
-	generatorPolyOne = copy.copy(generatorPolynomial)
-	for word in range(numDataCodewordsGroupOne):
-		generatorPolyOne.append(0)
-	generatorMultPolyOne = copy.copy(generatorPolyOne)
+		gen_poly = gen_poly_template[:] # copy template
+		for _ in range(codewords_per_block):
+			gen_poly.append(0)
+		gen_mult_poly = copy.copy(gen_poly)
 
-	generatorPolyTwo = copy.copy(generatorPolynomial)
-	for word in range(numDataCodewordsGroupTwo):
-		generatorPolyTwo.append(0)
-	generatorMultPolyTwo = copy.copy(generatorPolyTwo)
+		err_correction = []
+		for block in blocks:
+			result_poly = copy.copy(block)
+			for error in range(error_cw_per_block):
+				result_poly.append(0)
+			for i in range(codewords_per_block):
+				for j in range(0, len(gen_poly)):
+					gen_mult_poly[j] = int(result_poly[0])*gen_poly[j]
+				for k in range(0, len(msg_poly)):
+					result_poly[k] = int(gen_mult_poly[k])^int(result_poly[k])
+			for coefficient in range(len(result_poly)):
+				result_poly[coefficient] = bin(coefficient)[2:]
+			err_correction.append(result_poly)
 
-
-	groupOneErrorCorrection = []
-	for term in range(len(groupOne)):
-		resultPoly = copy.copy(groupOne[term])
-		for error in range(errorCorrectionPerBlock):
-			resultPoly.append(0)
-		for i in range(numDataCodewordsGroupOne):
-			for j in range(0, len(generatorPolyOne)):
-				generatorMultPolyOne[j] = int(resultPoly[0])*generatorPolyOne[j]
-			for k in range(0, len(messagePolynomial)):
-				resultPoly[k] = int(generatorMultPolyOne[k])^int(resultPoly[k])
-		for coefficient in range(len(resultPoly)):
-			resultPoly[coefficient] = bin(coefficient)[2:]
-		groupOneErrorCorrection.append(resultPoly)
-
-
-	groupTwoErrorCorrection = []
-	for term in range(len(groupTwo)):
-		resultPoly = copy.copy(groupTwo[term])
-		for error in range(errorCorrectionPerBlock):
-			resultPoly.append(0)
-		for i in range(numDataCodewordsGroupTwo):
-			for j in range(len(generatorPolyTwo)):
-				generatorMultPolyTwo[j] = resultPoly[0]*generatorPolyTwo[j]
-			for k in range(len(messagePolynomial)):
-				resultPoly[k] = generatorMultPolyTwo[k]^resultPoly[k]
-		for coefficient in range(len(resultPoly)):
-			resultPoly[coefficient] = bin(coefficient)[2:]
-		groupTwoErrorCorrection.append(resultPoly)
-
+		print(err_correction)
+	return
 
 	sizeLimit = max(numDataCodewordsGroupTwo, numDataCodewordsGroupOne)
 	interleavedMessage = ""
 	interleavedEC = ""
 	for j in range(sizeLimit):
-		for i in range(numGroupOneBlocks):
+		for i in range(g1_blocks):
 			if (j < numDataCodewordsGroupOne):
 				interleavedMessage = interleavedMessage+str(groupOne[i][j])
 
 			if (j < numDataCodewordsGroupTwo and i < numGroupTwoBlocks):
 				interleavedMessage = interleavedMessage+str(groupTwo[i][j])
 
-	for j in range(errorCorrectionPerBlock):
-		for i in range(numGroupOneBlocks):
+	for j in range(error_cw_per_block):
+		for i in range(g1_blocks):
 			interleavedEC = interleavedEC+str(groupOneErrorCorrection[i][j])
 			if i<numGroupTwoBlocks:
 				interleavedEC = interleavedEC+str(groupTwoErrorCorrection[i][j])
@@ -252,9 +232,11 @@ def find_generator_poly(numberECWords):
 
 	return generatorPolynomials[numberECWords]
 
-def get_qr(msg, error_level='L'):
+def get_qr(msg, error_level='M'):
 	version = get_version(len(msg), error_level=error_level)
+	print(version)
 	encoded_msg = get_formatted_data(msg, version=version, error_level=error_level)
+	print(encoded_msg)
 	fullyEncodedMessage = error_correction(encoded_msg, version=version, error_level=error_level)
 	return fullyEncodedMessage
 

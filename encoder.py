@@ -282,8 +282,7 @@ def main():
 	errorLevel = 'M'
 	message = message.upper()
 	stringEncoder = Encoder(message, errorLevel)
-	print(encode_message("HELLO WORLD"))
-	return
+	encodedMessage = stringEncoder.formatReturnString()
 	fullyEncodedMessage = stringEncoder.errorCorrection(encodedMessage)
 
 	print(fullyEncodedMessage)

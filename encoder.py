@@ -56,12 +56,12 @@ def get_version(correction_level, message_length):
 		raise RuntimeError("message is too long for largest supported version size!")
 	return version
 
-def format_char_count(correction_level, version, msg):
+def format_char_count(msg_len, version=1):
 	if version == 10:
 		indicatorSize = 11
 	else:
 		indicatorSize = 9
-	messageLengthBinary = bin(len(msg))[2:].zfill(8)
+	messageLengthBinary = bin(msg_len)[2:].zfill(8)
 	paddingBits = indicatorSize - len(messageLengthBinary)
 	charCountValue=""
 	for bit in range(paddingBits):
@@ -90,7 +90,7 @@ class Encoder:
 		self.dataEncoding = encodedMessage
 
 		self.version = get_version(self.correctionLevel, len(self.originalData))
-		self.charCount = format_char_count(self.correctionLevel, self.version, self.originalData)
+		self.charCount = format_char_count(len(self.originalData), version=self.version)
 
 		temporaryString = self.modeIndicator+str(self.charCount)+str(self.dataEncoding)
 		while not (len(temporaryString) % 8 == 0):
@@ -259,15 +259,6 @@ class Encoder:
 		}
 
 		return generatorPolynomials[numberECWords]
-
-
-
-
-
-
-
-
-
 
 def main():
 	# parser = argparse.ArgumentParser(description='Provide an alphanumeric string and error correction level.')

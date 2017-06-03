@@ -133,6 +133,8 @@ def error_correction(encoded_msg, error_level="L", version=1):
 	# convert each binary string into a number, which become coefficients of the gen polynomial
 	msg_poly = list(map(lambda i: int(i,2), msg_poly))
 
+	group_data = []
+	group_err = []
 	for (num_blocks, codewords_per_block) in group_blockings:
 		# pull numbers from global message polynomial into groupings
 		blocks = []
@@ -141,54 +143,101 @@ def error_correction(encoded_msg, error_level="L", version=1):
 			for codeword_num in range(codewords_per_block):
 				block_data.append(msg_poly[block_num*codewords_per_block + codeword_num])
 			blocks.append(block_data)
+		group_data.append(blocks)
 
-		gen_poly = gen_poly_template[:] # copy template
-		for _ in range(codewords_per_block):
-			gen_poly.append(0)
-		gen_mult_poly = copy.copy(gen_poly)
+		# multiply gen poly so degree is same as eventual error correction poly
 
-		err_correction = []
+		err_codewords = []
 		for block in blocks:
-			result_poly = copy.copy(block)
-			for error in range(error_cw_per_block):
+			# copy block into result polynomial, multiply by number of error codewords per block so that
+			# the lead term's exponent doesn't run out during divison
+			# this is called the message polynomial too, but it has this nameh to distinguish from the
+			# global msg_poly
+			result_poly = block[:]
+			for _ in range(error_cw_per_block):
 				result_poly.append(0)
-			for i in range(codewords_per_block):
-				for j in range(0, len(gen_poly)):
-					gen_mult_poly[j] = int(result_poly[0])*gen_poly[j]
-				for k in range(0, len(msg_poly)):
-					result_poly[k] = int(gen_mult_poly[k])^int(result_poly[k])
-			for coefficient in range(len(result_poly)):
-				result_poly[coefficient] = bin(coefficient)[2:]
-			err_correction.append(result_poly)
 
-		print(err_correction)
-	return
+			# division loop: number of division steps is equal to number of terms in message polynomial
+			for j in range(codewords_per_block):
 
-	sizeLimit = max(numDataCodewordsGroupTwo, numDataCodewordsGroupOne)
-	interleavedMessage = ""
-	interleavedEC = ""
-	for j in range(sizeLimit):
-		for i in range(g1_blocks):
-			if (j < numDataCodewordsGroupOne):
-				interleavedMessage = interleavedMessage+str(groupOne[i][j])
+				# copy gen poly base, multiply so degree is same as result poly
+				gen_poly = gen_poly_template[:]
+				while len(gen_poly) < len(result_poly):
+					gen_poly.append(0)
 
-			if (j < numDataCodewordsGroupTwo and i < numGroupTwoBlocks):
-				interleavedMessage = interleavedMessage+str(groupTwo[i][j])
+				# multiply generator poly by lead term of of msg poly
+				for i in range(len(gen_poly)):
+					gen_poly[i] = field_mult(result_poly[0], gen_poly[i])
+
+				# xor result with msg polynomial
+				for i in range(len(result_poly)):
+					result_poly[i] = gen_poly[i]^result_poly[i]
+
+				# slice away the now-zero leading term
+				result_poly = result_poly[1:]
+
+
+			err_codewords.append(result_poly)
+		group_err.append(err_codewords)
+		result_poly = list(map(lambda i: bin(i)[2:].zfill(8), result_poly))
+
+	print("data: ", group_data)
+	print("erro: ", group_err)
+
+	max_data_cw = max(map(lambda i: i[1], group_blockings))
+	max_group = group_blockings[0][0]
+	interleaved_msg = ""
+	interleaved_err = ""
+	for j in range(max_data_cw):
+		for i in range(max_group):
+			for group in group_data:
+				if (i < len(group)):
+					interleaved_msg += str(group[i][j])
 
 	for j in range(error_cw_per_block):
-		for i in range(g1_blocks):
-			interleavedEC = interleavedEC+str(groupOneErrorCorrection[i][j])
-			if i<numGroupTwoBlocks:
-				interleavedEC = interleavedEC+str(groupTwoErrorCorrection[i][j])
+		for i in range(max_group):
+			for group in group_err:
+				if (i < len(group)):
+					interleaved_err += str(group[i][j])
 
-	finalMessage = interleavedMessage+interleavedEC
+	finalMessage = interleaved_msg+interleaved_err
 	remainderBits = [0, 7, 7, 7, 7, 7, 0, 0, 0, 0]
 	numRemainderBits = remainderBits[version - 1]
 	for bit in range(numRemainderBits):
-		finalMessage = finalMessage +str(0)
+		finalMessage = finalMessage + str(0)
 
 	return finalMessage
 
+# Alpha-to-int
+AI = [
+  1, 2, 4, 8, 16, 32, 64, 128, 29, 58, 116, 232, 205, 135, 19, 38,
+  76, 152, 45, 90, 180, 117, 234, 201, 143, 3, 6, 12, 24, 48, 96,
+  192, 157, 39, 78, 156, 37, 74, 148, 53, 106, 212, 181, 119, 238,
+  193, 159, 35, 70, 140, 5, 10, 20, 40, 80, 160, 93, 186, 105, 210,
+  185, 111, 222, 161, 95, 190, 97, 194, 153, 47, 94, 188, 101, 202,
+  137, 15, 30, 60, 120, 240, 253, 231, 211, 187, 107, 214, 177, 127,
+  254, 225, 223, 163, 91, 182, 113, 226, 217, 175, 67, 134, 17, 34,
+  68, 136, 13, 26, 52, 104, 208, 189, 103, 206, 129, 31, 62, 124,
+  248, 237, 199, 147, 59, 118, 236, 197, 151, 51, 102, 204, 133, 23,
+  46, 92, 184, 109, 218, 169, 79, 158, 33, 66, 132, 21, 42, 84, 168,
+  77, 154, 41, 82, 164, 85, 170, 73, 146, 57, 114, 228, 213, 183,
+  115, 230, 209, 191, 99, 198, 145, 63, 126, 252, 229, 215, 179, 123,
+  246, 241, 255, 227, 219, 171, 75, 150, 49, 98, 196, 149, 55, 110,
+  220, 165, 87, 174, 65, 130, 25, 50, 100, 200, 141, 7, 14, 28, 56,
+  112, 224, 221, 167, 83, 166, 81, 162, 89, 178, 121, 242, 249, 239,
+  195, 155, 43, 86, 172, 69, 138, 9, 18, 36, 72, 144, 61, 122, 244,
+  245, 247, 243, 251, 235, 203, 139, 11, 22, 44, 88, 176, 125, 250,
+  233, 207, 131, 27, 54, 108, 216, 173, 71, 142
+]
+
+# multiple two numbers in the bitwise field
+def field_mult(a, b):
+	if a == 0 or b == 0:
+		return 0
+	a_alpha = AI.index(a)
+	b_alpha = AI.index(b)
+	res_alpha = (a_alpha + b_alpha) % 255
+	return AI[res_alpha]
 
 def find_generator_poly(numberECWords):
 	# if numberECWords == 7:
@@ -206,37 +255,36 @@ def find_generator_poly(numberECWords):
 	# 			resultExp = ((prevPolyExp+multPolyExp)%256)+math.floor((prevPolyExp+multPolyExp/256))
 	# 			returnPoly[i+j] = returnPoly[i+j]^int((2**resultExp))
 	# 	return returnPoly
-	generatorPolynomials = {7: [2**0, 2**87, 2**229, 2**147, 2**149, 2**238, 2**102, 2**21],
-	8: [2**0, 2**175, 2**238, 2**208, 2**249, 2**215, 2**252, 2**196, 2**28],
-	9: [2**0, 2**95, 2**246, 2**137, 2**231, 2**235, 2**149, 2**11, 2**123, 2**36],
-	10: [2**0, 2**251, 2**67, 2**46, 2**61, 2**118, 2**70, 2**64, 2**94, 2**32, 2**45],
-	11: [2**0, 2**220, 2**192, 2**91, 2**194, 2**172, 2**177, 2**209, 2**116, 2**227, 2**10, 2**55],
-	12: [2**0, 2**102, 2**43, 2**98, 2**121, 2**187, 2**113, 2**198, 2**143, 2**131, 2**87, 2**157, 2**66],
-	13: [2**0, 2**74, 2**152, 2**176, 2**100, 2**86, 2**100, 2**106, 2**104, 2**130, 2**218, 2**206, 2**140, 2**78],
-	14: [2**0, 2**199, 2**249, 2**155, 2**48, 2**190, 2**124, 2**218, 2**137, 2**216, 2**87, 2**207, 2**59, 2**22, 2**91],
-	15: [2**0, 2**8, 2**183, 2**61, 2**91, 2**202, 2**37, 2**51, 2**58, 2**58, 2**237, 2**140, 2**124, 2**5, 2**99, 2**105],
-	16: [2**0, 2**120, 2**104, 2**107, 2**109, 2**102, 2**161, 2**76, 2**3, 2**191, 2**147, 2**169, 2**182, 2**194, 2**225, 2**120],
-	17: [2**0, 2**43, 2**139, 2**206, 2**78, 2**43, 2**239, 2**123, 2**206, 2**214, 2**147, 2**24, 2**99, 2**150, 2**39, 2**243, 2**163, 2**136],
-	18: [2**0, 2**215, 2**234, 2**158, 2**94, 2**184, 2**97, 2**118, 2**170, 2**79, 2**187, 2**152, 2**148, 2**252, 2**179, 2**5, 2**98, 2**96, 2**153],
-	19: [2**0, 2**57, 2**3, 2**105, 2**153, 2**52, 2**90, 2**83, 2**17, 2**150, 2**159, 2**44, 2**128, 2**153, 2**133, 2**252, 2**222, 2**138, 2**220, 2**171],
-	20: [2**0, 2**17, 2**60, 2**79, 2**50, 2**61, 2**163, 2**26, 2**187, 2**202, 2**180, 2**221, 2**225, 2**83, 2**239, 2**156, 2**164, 2**212, 2**212, 2**188, 2**190],
-	21: [2**0, 2**240, 2**233, 2**104, 2**247, 2**181, 2**140, 2**67, 2**98, 2**85, 2**200, 2**210, 2**115, 2**148, 2**137, 2**230, 2**36, 2**122, 2**254, 2**148, 2**175, 2**210],
-	22: [2**0, 2**210, 2**171, 2**247, 2**242, 2**93, 2**230, 2**14, 2**109, 2**221, 2**53, 2**200, 2**74, 2**8, 2**172, 2**98, 2**80, 2**219, 2**134, 2**160, 2**105, 2**165, 2**231],
-	23: [2**0, 2**171, 2**102, 2**146, 2**91, 2**49, 2**103, 2**65, 2**17, 2**193, 2**150, 2**14, 2**25, 2**183, 2**248, 2**94, 2**164, 2**224, 2**192, 2**1, 2**78, 2**56, 2**147, 2**253],
-	24: [2**0, 2**229, 2**121, 2**135, 2**48, 2**211, 2**117, 2**251, 2**126, 2**159, 2**180, 2**169, 2**152, 2**192, 2**226, 2**228, 2**218, 2**111, 2**0, 2**117, 2**232, 2**87, 2**96, 2**227, 2**21],
-	25: [2**0, 2**231, 2**181, 2**156, 2**39, 2**170, 2**26, 2**12, 2**59, 215, 2**148, 2**201, 2**54, 2**66, 2**237, 2**208, 2**99, 2**167, 2**144, 2**182, 2**95, 2**243, 2**129, 2**178, 2**252, 2**45],
-	26: [2**0, 2**173, 2**125, 2**158, 2**2, 2**103, 2**182, 2**118, 2**17, 2**145, 2**201, 2**111, 2**28, 2**165, 2**53, 2**161, 2**21, 2**245, 22**142, 2**13, 2**102, 2**48, 2**227, 2**153, 2**145, 2**218, 2**70],
-	27: [2**0, 2**79, 2**228, 2**8, 2**165, 2**227, 2**21, 2**180, 2**29, 2**9, 2**237, 2**70, 2**99, 2**45, 2**58, 2**138, 2**135, 2**73, 2**126, 2**172, 2**94, 2**216, 2**193, 2**157, 2**26, 2**17, 2**149, 2**96],
-	28: [2**0, 2**168, 2**223, 2**200, 2**104, 2**224, 2**234, 2**108, 2**180, 2**110, 2**190, 2**195, 2**147, 2**205, 2**27, 2**232, 2**201, 2**21, 2**43, 2**245, 2**87, 2**42, 2**195, 2**212, 2**119, 2**242, 2**37, 2**9, 2**123]
+	generatorPolynomials = {
+		7: [AI[0], AI[87], AI[229], AI[147], AI[149], AI[238], AI[102], AI[21]],
+		8: [AI[0], AI[175], AI[238], AI[208], AI[249], AI[215], AI[252], AI[196], AI[28]],
+		9: [AI[0], AI[95], AI[246], AI[137], AI[231], AI[235], AI[149], AI[11], AI[123], AI[36]],
+		10: [AI[0], AI[251], AI[67], AI[46], AI[61], AI[118], AI[70], AI[64], AI[94], AI[32], AI[45]],
+		11: [AI[0], AI[220], AI[192], AI[91], AI[194], AI[172], AI[177], AI[209], AI[116], AI[227], AI[10], AI[55]],
+		12: [AI[0], AI[102], AI[43], AI[98], AI[121], AI[187], AI[113], AI[198], AI[143], AI[131], AI[87], AI[157], AI[66]],
+		13: [AI[0], AI[74], AI[152], AI[176], AI[100], AI[86], AI[100], AI[106], AI[104], AI[130], AI[218], AI[206], AI[140], AI[78]],
+		14: [AI[0], AI[199], AI[249], AI[155], AI[48], AI[190], AI[124], AI[218], AI[137], AI[216], AI[87], AI[207], AI[59], AI[22], AI[91]],
+		15: [AI[0], AI[8], AI[183], AI[61], AI[91], AI[202], AI[37], AI[51], AI[58], AI[58], AI[237], AI[140], AI[124], AI[5], AI[99], AI[105]],
+		16: [AI[0], AI[120], AI[104], AI[107], AI[109], AI[102], AI[161], AI[76], AI[3], AI[191], AI[147], AI[169], AI[182], AI[194], AI[225], AI[120]],
+		17: [AI[0], AI[43], AI[139], AI[206], AI[78], AI[43], AI[239], AI[123], AI[206], AI[214], AI[147], AI[24], AI[99], AI[150], AI[39], AI[243], AI[163], AI[136]],
+		18: [AI[0], AI[215], AI[234], AI[158], AI[94], AI[184], AI[97], AI[118], AI[170], AI[79], AI[187], AI[152], AI[148], AI[252], AI[179], AI[5], AI[98], AI[96], AI[153]],
+		19: [AI[0], AI[57], AI[3], AI[105], AI[153], AI[52], AI[90], AI[83], AI[17], AI[150], AI[159], AI[44], AI[128], AI[153], AI[133], AI[252], AI[222], AI[138], AI[220], AI[171]],
+		20: [AI[0], AI[17], AI[60], AI[79], AI[50], AI[61], AI[163], AI[26], AI[187], AI[202], AI[180], AI[221], AI[225], AI[83], AI[239], AI[156], AI[164], AI[212], AI[212], AI[188], AI[190]],
+		21: [AI[0], AI[240], AI[233], AI[104], AI[247], AI[181], AI[140], AI[67], AI[98], AI[85], AI[200], AI[210], AI[115], AI[148], AI[137], AI[230], AI[36], AI[122], AI[254], AI[148], AI[175], AI[210]],
+		22: [AI[0], AI[210], AI[171], AI[247], AI[242], AI[93], AI[230], AI[14], AI[109], AI[221], AI[53], AI[200], AI[74], AI[8], AI[172], AI[98], AI[80], AI[219], AI[134], AI[160], AI[105], AI[165], AI[231]],
+		23: [AI[0], AI[171], AI[102], AI[146], AI[91], AI[49], AI[103], AI[65], AI[17], AI[193], AI[150], AI[14], AI[25], AI[183], AI[248], AI[94], AI[164], AI[224], AI[192], AI[1], AI[78], AI[56], AI[147], AI[253]],
+		24: [AI[0], AI[229], AI[121], AI[135], AI[48], AI[211], AI[117], AI[251], AI[126], AI[159], AI[180], AI[169], AI[152], AI[192], AI[226], AI[228], AI[218], AI[111], AI[0], AI[117], AI[232], AI[87], AI[96], AI[227], AI[21]],
+		25: [AI[0], AI[231], AI[181], AI[156], AI[39], AI[170], AI[26], AI[12], AI[59], 215, AI[148], AI[201], AI[54], AI[66], AI[237], AI[208], AI[99], AI[167], AI[144], AI[182], AI[95], AI[243], AI[129], AI[178], AI[252], AI[45]],
+		26: [AI[0], AI[173], AI[125], AI[158], AI[2], AI[103], AI[182], AI[118], AI[17], AI[145], AI[201], AI[111], AI[28], AI[165], AI[53], AI[161], AI[21], AI[245], AI[142], AI[13], AI[102], AI[48], AI[227], AI[153], AI[145], AI[218], AI[70]],
+		27: [AI[0], AI[79], AI[228], AI[8], AI[165], AI[227], AI[21], AI[180], AI[29], AI[9], AI[237], AI[70], AI[99], AI[45], AI[58], AI[138], AI[135], AI[73], AI[126], AI[172], AI[94], AI[216], AI[193], AI[157], AI[26], AI[17], AI[149], AI[96]],
+		28: [AI[0], AI[168], AI[223], AI[200], AI[104], AI[224], AI[234], AI[108], AI[180], AI[110], AI[190], AI[195], AI[147], AI[205], AI[27], AI[232], AI[201], AI[21], AI[43], AI[245], AI[87], AI[42], AI[195], AI[212], AI[119], AI[242], AI[37], AI[9], AI[123]]
 	}
 
 	return generatorPolynomials[numberECWords]
 
 def get_qr(msg, error_level='M'):
 	version = get_version(len(msg), error_level=error_level)
-	print(version)
 	encoded_msg = get_formatted_data(msg, version=version, error_level=error_level)
-	print(encoded_msg)
 	fullyEncodedMessage = error_correction(encoded_msg, version=version, error_level=error_level)
 	return fullyEncodedMessage
 

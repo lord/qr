@@ -16,6 +16,15 @@ ERROR_CORRECTION_DICT = {
 	10:{'L':274, 'M':216, 'Q':154, 'H':122}
 }
 
+# maximum character counts are stored as a dict
+# MAX_CHAR_COUNTS[correction_level][version-1]
+MAX_CHAR_COUNTS = {
+	'L': [25, 47, 77, 114, 154,195, 224, 279, 335, 395],
+	'M': [20, 38, 61, 90, 122, 154, 178, 221, 262, 311],
+	'Q': [16, 29, 47, 67, 87, 108, 125, 157, 189,221],
+	'H': [10, 20, 35, 50, 64, 84, 93, 122, 143, 174]
+}
+
 def encode_message(msg):
 	alphanumericValueTable = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D',
 		'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
@@ -39,6 +48,14 @@ def encode_message(msg):
 		messageEncoding = messageEncoding + str(binaryValue)
 	return messageEncoding
 
+def get_version(correction_level, message_length):
+	version = 1
+	while version <= 10 and MAX_CHAR_COUNTS[correction_level][version-1] < message_length:
+		version += 1
+	if version > 10:
+		raise ArgumentError("message is too long for largest supported version size!")
+	return version
+
 class Encoder:
 	def __init__(self, messageString, errorCorrection):
 		self.originalData = messageString
@@ -51,8 +68,8 @@ class Encoder:
 
 	def formatCharCount(self):
 		messageLength = len(self.originalData)
-		version = self.getVersion(messageLength)
-		if version == 10:
+		self.version = get_version(self.correctionLevel, messageLength)
+		if self.version == 10:
 			indicatorSize = 11
 		else:
 			indicatorSize = 9
@@ -94,20 +111,6 @@ class Encoder:
 				self.returnString = self.returnString+" "
 			self.returnString = self.returnString+temporaryString[i]
 		return self.returnString
-
-	def getVersion(self, messageLength):
-		#versions are stored as a dictionary of correction level:{alphanumeric limit:version}
-		versionDictionary = {'L':{25:1, 47:2, 77:3, 114:4, 154:5,195:6, 224:7, 279:8, 335:9, 395:10},
-			'M':{20:1, 38:2, 61:3, 90:4, 122:5, 154:6, 178:7, 221:8, 262:9, 311:10},
-			'Q':{16:1, 29:2, 47:3, 67:4, 87:5, 108:6, 125:7, 157:8, 189:9 ,221:10},
-			'H':{10:1, 20:2, 35:3, 50:4, 64:5, 84:6, 93:7, 122:8, 143:9, 174:10}}
-		maxMessageLength = messageLength
-		errorVersion = versionDictionary[self.correctionLevel]
-		while maxMessageLength not in errorVersion:
-			maxMessageLength += 1
-		version = errorVersion[maxMessageLength]
-		self.version = version
-		return version
 
 	def errorCorrection(self, messageString):
 		ECTable = {'L':{1:7, 2:10, 3:15, 4:20, 5:26, 6:18, 7:20, 8:26, 9:30, 10:18},

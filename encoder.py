@@ -48,9 +48,9 @@ def encode_message(msg):
 		messageEncoding = messageEncoding + str(binaryValue)
 	return messageEncoding
 
-def get_version(correction_level, message_length):
+def get_version(msg_len, correction_level="L"):
 	version = 1
-	while version <= 10 and MAX_CHAR_COUNTS[correction_level][version-1] < message_length:
+	while version <= 10 and MAX_CHAR_COUNTS[correction_level][version-1] < msg_len:
 		version += 1
 	if version > 10:
 		raise RuntimeError("message is too long for largest supported version size!")
@@ -89,7 +89,7 @@ class Encoder:
 			encodedMessage = str(encodedMessage)+str(0)
 		self.dataEncoding = encodedMessage
 
-		self.version = get_version(self.correctionLevel, len(self.originalData))
+		self.version = get_version(len(self.originalData), correction_level=self.correctionLevel)
 		self.charCount = format_char_count(len(self.originalData), version=self.version)
 
 		temporaryString = self.modeIndicator+str(self.charCount)+str(self.dataEncoding)

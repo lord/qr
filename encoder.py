@@ -17,13 +17,15 @@ ERROR_CORRECTION_DICT = {
 }
 
 # maximum character counts are stored as a dict
-# MAX_CHAR_COUNTS[correction_level][version-1]
+# MAX_CHAR_COUNTS[error_level][version-1]
 MAX_CHAR_COUNTS = {
 	'L': [25, 47, 77, 114, 154,195, 224, 279, 335, 395],
 	'M': [20, 38, 61, 90, 122, 154, 178, 221, 262, 311],
 	'Q': [16, 29, 47, 67, 87, 108, 125, 157, 189,221],
 	'H': [10, 20, 35, 50, 64, 84, 93, 122, 143, 174]
 }
+
+MODE_INDICATOR = '0010'
 
 def encode_message(msg):
 	alphanumericValueTable = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D',
@@ -48,9 +50,9 @@ def encode_message(msg):
 		messageEncoding = messageEncoding + str(binaryValue)
 	return messageEncoding
 
-def get_version(msg_len, correction_level="L"):
+def get_version(msg_len, error_level="L"):
 	version = 1
-	while version <= 10 and MAX_CHAR_COUNTS[correction_level][version-1] < msg_len:
+	while version <= 10 and MAX_CHAR_COUNTS[error_level][version-1] < msg_len:
 		version += 1
 	if version > 10:
 		raise RuntimeError("message is too long for largest supported version size!")
@@ -69,47 +71,48 @@ def format_char_count(msg_len, version=1):
 	charCountValue = charCountValue + messageLengthBinary
 	return charCountValue
 
+def get_formatted_data(msg, error_level="L"):
+	msg = msg.upper()
+	version = get_version(len(msg), error_level=error_level)
+	char_count = format_char_count(len(msg), version=version)
+
+	requiredWords = ERROR_CORRECTION_DICT[version][error_level]
+	requiredBits = 8*requiredWords
+
+	encodedMessage = encode_message(msg)
+	terminalBits = min(4, requiredBits-len(encodedMessage))
+	for bit in range(terminalBits):
+		encodedMessage = str(encodedMessage)+str(0)
+
+	temporaryString = MODE_INDICATOR+str(char_count)+str(encodedMessage)
+	while not (len(temporaryString) % 8 == 0):
+		temporaryString = temporaryString + str(0)
+	if (len(temporaryString) != requiredBits):
+		extraBitsNeeded = requiredBits - len(temporaryString)
+		padBytesNeeded = int(extraBitsNeeded / 8)
+
+		temporaryString
+		for i in range(padBytesNeeded):
+			if (i % 2) == 0:
+				temporaryString = temporaryString + '11101100'
+			else:
+				temporaryString = temporaryString + '00010001'
+
+	return_string = ""
+	for i in range(len(temporaryString)):
+		if i % 8 == 0:
+			return_string = return_string+" "
+		return_string = return_string+temporaryString[i]
+	return return_string
+
+
 class Encoder:
 	def __init__(self, messageString, errorCorrection):
-		self.originalData = messageString
+		self.originalMessage = messageString
 		self.charCount = 0
-		self.modeIndicator = '0010'
-		self.dataEncoding = ''
 		self.returnString = ''
 		self.correctionLevel = errorCorrection
 		self.version = 1
-
-	def formatReturnString(self):
-		requiredWords = ERROR_CORRECTION_DICT[self.version][self.correctionLevel]
-		requiredBits = 8*requiredWords
-
-		encodedMessage = encode_message(self.originalData)
-		terminalBits = min(4, requiredBits-len(encodedMessage))
-		for bit in range(terminalBits):
-			encodedMessage = str(encodedMessage)+str(0)
-		self.dataEncoding = encodedMessage
-
-		self.version = get_version(len(self.originalData), correction_level=self.correctionLevel)
-		self.charCount = format_char_count(len(self.originalData), version=self.version)
-
-		temporaryString = self.modeIndicator+str(self.charCount)+str(self.dataEncoding)
-		while not (len(temporaryString) % 8 == 0):
-			temporaryString = temporaryString + str(0)
-		if (len(temporaryString) != requiredBits):
-			extraBitsNeeded = requiredBits - len(temporaryString)
-			padBytesNeeded = int(extraBitsNeeded / 8)
-
-			temporaryString
-			for i in range(padBytesNeeded):
-				if (i % 2) == 0:
-					temporaryString = temporaryString + '11101100'
-				else:
-					temporaryString = temporaryString + '00010001'
-		for i in range(len(temporaryString)):
-			if i % 8 == 0:
-				self.returnString = self.returnString+" "
-			self.returnString = self.returnString+temporaryString[i]
-		return self.returnString
 
 	def errorCorrection(self, messageString):
 		ECTable = {'L':{1:7, 2:10, 3:15, 4:20, 5:26, 6:18, 7:20, 8:26, 9:30, 10:18},
@@ -268,11 +271,8 @@ def main():
 	# args = parser.parse_args()
 	# args[0] = message
 	# args[1] = errorLevel
-	message = 'hello world'
-	errorLevel = 'M'
-	message = message.upper()
-	stringEncoder = Encoder(message, errorLevel)
-	encodedMessage = stringEncoder.formatReturnString()
+	stringEncoder = Encoder('HELLO WORLD', 'M')
+	encodedMessage = get_formatted_data('hello world', error_level='M')
 	fullyEncodedMessage = stringEncoder.errorCorrection(encodedMessage)
 
 	print(fullyEncodedMessage)
